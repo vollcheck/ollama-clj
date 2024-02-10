@@ -1,0 +1,15 @@
+{:paths ["src" "resources"]
+ :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+
+        ;; HTTP communication
+        manifold/manifold {:mvn/version "0.4.2"}
+        aleph/aleph {:mvn/version "0.7.1"}
+
+        ;; JSON
+        metosin/jsonista {:mvn/version "0.3.8"}
+
+        ;; Schema
+        metosin/malli {:mvn/version "0.14.0"}}
+ :aliases
+ {:dev {:extra-paths ["dev"]}
+  :test {:extra-paths ["test"]}}}
