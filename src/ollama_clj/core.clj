@@ -43,24 +43,12 @@
 
 (defn chat
   [client opts]
-  #_{:pre [(m/validate s/ChatOptions opts)]}
+  {:pre [(m/validate s/ChatOptions opts)]}
   (request-stream client :post "/api/chat" opts))
 
 (defn generate
   ;; ollama.generate(model='llama2', prompt='Why is the sky blue?')
-  [client {:keys [model prompt system template context stream? raw? format images options keep-alive?]
-           :or {model ""
-                prompt ""
-                system ""
-                template ""
-                context nil
-                stream? false
-                raw? false
-                format ""
-                images nil
-                options nil
-                keep-alive? nil}
-           :as opts}]
+  [client opts]
   {:pre [(not (str/blank? model))]}
   (request-stream client :post "/api/generate" opts))
 
@@ -111,27 +99,17 @@
   (request-stream client :post "/api/create" opts))
 
 (defn copy
-  [client
-   {:keys [model source destination]
-    :or {model ""
-         source ""
-         destination ""}
-    :as opts}]
-  {:pre [(not (str/blank? model))]}
+  [client opts]
+  {:pre [(m/validate s/Copy opts)]}
   (let [response (request client :post "/api/copy" opts)]
     (if (= 200 (:status response))
       {:status "success"}
       {:status "failure"})))
 
 (defn push
-  [client
-   {:keys [model insecure? stream?]
-    :or {model ""
-         insecure? false
-         stream? false}
-    :as opts}]
-  {:pre [(not (str/blank? model))]}
-  (request-stream client "/api/push" opts))
+  [client opts]
+  {:pre [(m/validate s/Push opts)]}
+  (request-stream client :post "/api/push" opts))
 
 (defn pull
   [client
