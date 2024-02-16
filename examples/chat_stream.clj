@@ -7,7 +7,5 @@
   [{:role "user"
     :content "Why is the sky blue?"}])
 
-(doseq [part (o/chat client {:model "mistral"
-                             :messages messages
-                             :stream? true})]
+(doseq [part (o/chat client "mistral"  messages {:stream? true})]
   (print (-> part :message :content)))

@@ -7,8 +7,7 @@
   [{:role "user"
     :content "Why is the sky blue?"}])
 
-(-> (o/chat client {:model "mistral"
-                    :messages messages})
+(-> (o/chat client "mistral" messages})
     :message
     :content
     println)
