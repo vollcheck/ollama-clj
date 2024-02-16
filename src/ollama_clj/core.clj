@@ -17,20 +17,20 @@
 
 (defrecord Client [^String base-url]
   BaseClient
-  (request [this method endpoint {:keys [] :as opts}]
+  (request [_this method endpoint {:keys [] :as opts}]
     (let [method (resolve-method method)]
       (-> (str base-url endpoint)
           (method {:headers {"Content-Type" "application/json"}
                    :body (json/write-value-as-string opts)})
           (d/chain #(println "Response:" @(d/deferred @%))))))
 
-  (stream [this method endpoint {:keys [] :as opts}]
+  (stream [_this method endpoint {:keys [] :as opts}]
     (let [method (resolve-method method)]
       (-> (str base-url endpoint)
           (method {:headers {"Content-Type" "application/json"}
                    :body (json/write-value-as-string opts)
                    :stream? true})
-          (d/chain (fn [{:keys [body] :as resp}]
+          (d/chain (fn [{:keys [body] :as _resp}]
                      (stream/consume
                       (fn [chunk]
                         (println "Received chunk:" chunk))
@@ -42,21 +42,28 @@
       (request this method endpoint opts))))
 
 (defn chat
-  [client opts]
-  {:pre [(m/validate s/ChatOptions opts)]}
-  (request-stream client :post "/api/chat" opts))
+  [client model messages opts]
+  (request-stream client
+                  :post
+                  "/api/chat"
+                  (assoc opts
+                         :model model
+                         :messages messages)))
 
 (defn generate
-  ;; ollama.generate(model='llama2', prompt='Why is the sky blue?')
-  [client opts]
-  {:pre [(not (str/blank? model))]}
-  (request-stream client :post "/api/generate" opts))
+  [client model prompt opts]
+  (request-stream client
+                  :post
+                  "/api/generate"
+                  (assoc opts
+                         :model model
+                         :prompt prompt)))
 
-(defn parse-modelfile []
+(defn- parse-modelfile []
   (assert false "Not implemented")
   )
 
-(defn create-blob []
+(defn- create-blob []
   (assert false "Not implemented")
   )
 
