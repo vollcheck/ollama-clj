@@ -54,6 +54,7 @@ TODO
 - Python library: https://github.com/ollama/ollama-python
 - https://github.com/s-kostyaev/ellama/blob/main/ellama.el
 - streaming server used for testing `ollama-clj`: https://github.com/vollcheck/streaming-server-clj
+- aleph/manifold docs: https://github.com/clj-commons/manifold/blob/master/doc/stream.md
 
 ## TODO
 

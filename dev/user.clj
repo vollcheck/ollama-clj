@@ -10,16 +10,6 @@
     [{:role "user"
       :content "Why is the sky blue?"}])
 
-  (o/chat client {:model "llama2"
-                  :messages messages})
-
-  (-> (o/chat client {:model "llama2"
-                      :messages messages})
-      :message
-      #_#_:content
-      println
-      )
-
-
+  (o/chat client "llama2" messages)
 
   )
