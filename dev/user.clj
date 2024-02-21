@@ -10,6 +10,5 @@
     [{:role "user"
       :content "Why is the sky blue?"}])
 
-  (o/chat client "llama2" messages)
-
+  (o/chat client "stablelm-zephyr" messages)
   )
