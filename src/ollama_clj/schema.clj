@@ -2,13 +2,23 @@
   (:require [clojure.string :as str]
             [malli.core :as m]))
 
-(defn non-blank-string? [s]
-  (and (string? s)
-       (not (str/blank? s))))
-
 (def nb-string
   [:pred #(and (string? %)
-              (not (str/blank? %)))])
+               (not (str/blank? %)))])
+
+(def Generate
+  [:map
+   [:model :string]
+   [:prompt :string]
+   [:system {:optional true} :string]
+   [:template {:optional true} :string]
+   [:context {:optional true} :string]
+   [:stream {:optional true} :boolean]
+   [:raw {:optional true} :boolean]
+   [:format {:optional true} :string]
+   [:images {:optional true} :any] ;; TODO
+   [:options {:optional true} :any]
+   [:keep-alive {:optional true} :boolean]])
 
 (def Message
   [:map
@@ -20,44 +30,43 @@
    [:model nb-string]
    [:messages :vector Message]
    [:stream :boolean]
-   [:format :string]
+   [:format :string] ;; enum json or ""
    [:options {:optional true} :any]
    [:keep-alive {:optional true} :boolean]])
-
-(def Generate
-  [:map
-   [:model nb-string]
-   [:prompt nb-string]
-   [:system {:optional true} :string]
-   [:template {:optional true} :string]
-   [:context {:optional true} :string]
-   [:stream {:optional true} :boolean]
-   [:raw {:optional true} :boolean]
-   [:format {:optional true} :string]
-   [:images {:optional true} :any] ;; TODO
-   [:options {:optional true} :any]
-   [:keep-alive {:optional true} :boolean]])
-
-(comment
-  (require '[malli.generator :as mg])
-  (mg/generate Message)
-  )
-
-(def Options
-  [:map
-   [:model nb-string]
-   [:messages :vector Message]
-   [:stream :boolean]
-   [:format :string]
-   [:options :any]
-   [:keep-alive :boolean]])
 
 (def Embeddings
   [:map
    [:model nb-string]
    [:prompt nb-string]
-   [:?options :vector :string] ;; TODO
-   [:?keep-alive :boolean]])
+   [:options {:optional true} :any]
+   [:keep-alive {:optional true} :any]])
+
+(def Pull
+  [:map
+   [:model nb-string]
+   [:insecure :boolean] ;; false
+   [:stream :boolean]]) ;; false
+
+(def Push
+  [:map
+   [:model nb-string]
+   [:insecure? :boolean] ;; false
+   [:stream? :boolean]]) ;; false
+
+(def Create
+  [:map
+   [:model nb-string]
+   [:path {:optional true} :string]
+   [:modelfile {:optional true} :string]
+   [:stream? :boolean]]) ;; false
+
+(def Delete
+  [:map
+   [:model nb-string]])
+
+(def ListTags
+  [:map
+   [:model nb-string]])
 
 (def Copy
   [:map
@@ -65,11 +74,9 @@
    [:source :string]
    [:destination :string]])
 
-(def Push
+(def Show
   [:map
-   [:model nb-string]
-   [:insecure? :boolean]
-   [:stream? :boolean]])
+   [:model nb-string]])
 
 (comment
   (require '[malli.generator :as mg])
