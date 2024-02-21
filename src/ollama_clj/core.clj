@@ -1,24 +1,26 @@
 (ns ollama-clj.core
   ;; (:exclude [list]) ;; for list
   (:require [clojure.string :as str]
-            [aleph.http :as http]
-            [manifold.deferred :as d]
-            [manifold.stream :as stream]
+            [org.httpkit.client :as http]
             [jsonista.core :as json]
             [ollama-clj.schema :as s]
             [malli.core :as m]))
 
-(def user-agent-string ;; TODO
-  (format "ollama-clj/%s (%s %s) with Clojure version %s" ollama-version machine os-version (clojure-version)))
+(def ollama-clj-version "0.1.0")
+
+(def user-agent-string
+  (format "ollama-clj/%s (%s system with Java %s) with Clojure version %s"
+          ollama-clj-version
+          (System/getProperty "os.name")
+          (System/getProperty "java.version")
+          (clojure-version)))
 
 (def base-config
-  {:base-url (or (System/getenv "OLLAMA_BASE_URL")
-                 "http://localhost:11434")
-   :follow-redirects? true
+  {:follow-redirects? true
    :timeout nil
    :headers {"Content-Type" "application/json"
              "Accept"       "application/json"
-             "User-Agent"   "ollama-clj"}})
+             "User-Agent"   user-agent-string}})
 
 (defprotocol BaseClient
   (request        [this method endpoint opts])
@@ -26,32 +28,34 @@
   (request-stream [this method endpoint opts]))
 
 (defn- resolve-method [method]
-  (ns-resolve 'aleph.http (symbol (name method))))
+  (ns-resolve 'org.httpkit.client (symbol (name method))))
 
+;; https://github.com/clj-commons/aleph/blob/master/src/aleph/http.clj#L469
 (defrecord Client [^String base-url]
   BaseClient
-  (request [_this method endpoint {:keys [] :as opts}]
-    (let [method (resolve-method method)]
-      (-> (str base-url endpoint)
-          (method {:headers {"Content-Type" "application/json"}
-                   :body (json/write-value-as-string opts)})
-          (d/chain #(println "Response:" @(d/deferred @%))))))
+  (request [_this method endpoint opts]
+    (let [url (str base-url endpoint)
+          method (resolve-method method)
+          body (json/write-value-as-string opts)
+          {:keys [status] :as response} @(method url (assoc opts :body body))]
+      (if (>= status 200)
+        response
+        (throw (Exception. (str "Request failed with status " status))))))
 
+  ;; I've heard that streaming is not supported with http-kit
+  ;; though what about websockets?
+  ;; or {:as stream} option?
+  ;; Get the body as a byte stream
+  ;; (hk-client/get "http://site.com/favicon.ico" {:as :stream}
+  ;;   (fn [{:keys [status headers body error opts]}]
+  ;;     ;; body is a `java.io.InputStream`
+  ;;     ))
   (stream [_this method endpoint {:keys [] :as opts}]
-    (let [method (resolve-method method)]
-      (-> (str base-url endpoint)
-          (method {:headers {"Content-Type" "application/json"}
-                   :body (json/write-value-as-string opts)
-                   :stream? true})
-          (d/chain (fn [{:keys [body] :as _resp}]
-                     (stream/consume
-                      (fn [chunk]
-                        (println "Received chunk:" chunk))
-                      body))))))
+    (throw (UnsupportedOperationException. "Streaming not supported with http-kit")))
 
   (request-stream [this method endpoint {:keys [stream?] :as opts}]
     (if stream?
-      (stream this method endpoint opts)
+      (throw (UnsupportedOperationException. "Streaming not supported with http-kit"))
       (request this method endpoint opts))))
 
 (comment
@@ -63,24 +67,19 @@
   ([client model messages]
    (chat client model messages {}))
   ([client model messages opts]
-   (request-stream client
-                   :post
-                   "/api/chat"
-                   (assoc opts
-                          :model model
-                          :messages messages))))
+   (request-stream client :post "/api/chat" (assoc opts
+                                                   :model model
+                                                   :messages messages))))
 
 (defn generate
   ([client model prompt]
    (generate client model prompt {:stream? false
-                                  :raw? false}))
+                                  ;; raw is not supported
+                                  #_#_:raw? false}))
   ([client model prompt opts]
-   (request-stream client
-                   :post
-                   "/api/generate"
-                   (assoc opts
-                          :model model
-                          :prompt prompt))))
+   (request-stream client :post "/api/generate" (assoc opts
+                                                       :model model
+                                                       :prompt prompt))))
 
 (defn embeddings
   ([client model prompt]
@@ -122,7 +121,7 @@
       {:status "success"}
       {:status "failure"})))
 
-(defn list [client]
+(defn list-tags [client]
   (request client :get "/api/tags" {}))
 
 (defn show
