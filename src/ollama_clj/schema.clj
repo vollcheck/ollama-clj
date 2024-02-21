@@ -81,8 +81,5 @@
 (comment
   (require '[malli.generator :as mg])
   (mg/generate Message)
-
-  (mg/generate Options)
-
   (m/validate Message {:role "user" :content "Why is the sky blue?"})
   )

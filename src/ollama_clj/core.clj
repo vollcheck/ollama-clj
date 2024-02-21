@@ -124,18 +124,14 @@
 (defn list-tags [client]
   (request client :get "/api/tags" {}))
 
-(defn show
-  [client
-   {:keys [model]
-    :or {model ""}
-    :as opts}]
-  {:pre [(not (str/blank? model))]}
-  (request client :post "/api/show" opts))
-
 (defn copy
-  [client opts]
-  {:pre [(m/validate s/Copy opts)]}
-  (let [response (request client :post "/api/copy" opts)]
-    (if (= 200 (:status response))
+  [client source destination]
+  (let [{:keys [status] :as _response} (request client :post "/api/copy" {:source source
+                                                                          :destination destination})]
+    (if (= 200 status)
       {:status "success"}
       {:status "failure"})))
+
+(defn show
+  [client model]
+  (request client :post "/api/show" {:name model}))
