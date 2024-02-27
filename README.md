@@ -2,7 +2,7 @@
 
 ## NOTE: Work in progress!
 
-Use [`ollama`][https://ollama.com] within Clojure project.
+Use [`ollama`](https://ollama.com) within Clojure project.
 
 ## Usage
 
@@ -36,13 +36,13 @@ or with streaming option:
   (print (-> part :message :content)))
 ```
 
-For more usages reach out to [`examples/`][examples/] directory.
+For more usages reach out to `examples/` directory.
 
 ### Async client
 
 TODO
 
-### Create your own client
+### Implement your own client
 
 If you want to gain control over the way of executing `ollama` calls, you can implement your own client like so:
 
@@ -52,13 +52,6 @@ TODO
 
 ## References
 
-- Ollama: https://ollama.com
-- Python library: https://github.com/ollama/ollama-python
-- https://github.com/s-kostyaev/ellama/blob/main/ellama.el
-- streaming server used for testing `ollama-clj`: https://github.com/vollcheck/streaming-server-clj
+- ollama: https://ollama.com
+- Python library for ollama (big inspiration for this project): https://github.com/ollama/ollama-python
 - aleph/manifold docs: https://github.com/clj-commons/manifold/blob/master/doc/stream.md
-
-## TODO
-
-- juxt/aero for reading the configuration (in practice URL only - do not overengineer it...)
-- make name of the model a part of the client? it can persist through calls to ollama
