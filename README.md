@@ -1,6 +1,8 @@
 # ollama-clj
 
-Use [`ollama`][https://ollama.com] from the Clojure project.
+## NOTE: Work in progress!
+
+Use [`ollama`][https://ollama.com] within Clojure project.
 
 ## Usage
 
