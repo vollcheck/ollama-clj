@@ -23,7 +23,11 @@
 (def Message
   [:map
    [:role [:enum "user" "system"]]
-   [:content nb-string]])
+   [:content nb-string]
+   [:images {:optional true} :any]])
+
+(def Messages
+  [:vector Message])
 
 (def Chat
   [:map
