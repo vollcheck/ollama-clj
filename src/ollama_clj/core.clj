@@ -1,15 +1,15 @@
 (ns ollama-clj.core
   ;; (:exclude [list]) ;; for list
-  (:require [clojure.string :as str]
-            [org.httpkit.client :as http]
-            [jsonista.core :as json]
-            [ollama-clj.schema :as s]
-            [malli.core :as m]))
+  (:require [aleph.http :as http]
+            [clj-commons.byte-streams :as bs]
+            [manifold.stream :as s]
+            [manifold.deferred :as d]
+            [jsonista.core :as json]))
 
 (def ollama-clj-version "0.1.0")
 
 (def user-agent-string
-  (format "ollama-clj/%s (%s system with Java %s) with Clojure version %s"
+  (format "ollama-clj/%s; system: %s with Java %s and Clojure %s"
           ollama-clj-version
           (System/getProperty "os.name")
           (System/getProperty "java.version")
@@ -28,110 +28,140 @@
   (request-stream [this method endpoint opts]))
 
 (defn- resolve-method [method]
-  (ns-resolve 'org.httpkit.client (symbol (name method))))
+  (ns-resolve 'aleph.http (symbol (name method))))
 
-;; https://github.com/clj-commons/aleph/blob/master/src/aleph/http.clj#L469
 (defrecord Client [^String base-url]
   BaseClient
   (request [_this method endpoint opts]
-    (let [url (str base-url endpoint)
+    (let [url    (str base-url endpoint)
           method (resolve-method method)
-          body (json/write-value-as-string opts)
-          {:keys [status] :as response} @(method url (assoc opts :body body))]
-      (if (>= status 200)
-        response
-        (throw (Exception. (str "Request failed with status " status))))))
+          body   (json/write-value-as-string opts)
+          opts   (assoc opts :body body)]
+      (d/chain (method url opts)
+               :body
+               bs/to-string)))
 
-  ;; I've heard that streaming is not supported with http-kit
-  ;; though what about websockets?
-  ;; or {:as stream} option?
-  ;; Get the body as a byte stream
-  ;; (hk-client/get "http://site.com/favicon.ico" {:as :stream}
-  ;;   (fn [{:keys [status headers body error opts]}]
-  ;;     ;; body is a `java.io.InputStream`
-  ;;     ))
   (stream [_this method endpoint {:keys [] :as opts}]
-    (throw (UnsupportedOperationException. "Streaming not supported with http-kit")))
+    (let [url    (str base-url endpoint)
+          method (resolve-method method)
+          body   (json/write-value-as-string opts)
+          cp     (http/connection-pool {:connection-options {:raw-stream? true}})
+          om     (json/keyword-keys-object-mapper)
+          opts   (assoc opts :body body :pool cp)]
+      (-> (method url opts)
+          (d/chain (fn [{:keys [body] :as _resp}]
+                     (s/consume
+                      (fn [chunk]
+                        (print "_" (-> chunk bs/to-string (json/read-value om) :response)))
+                      body))))))
 
   (request-stream [this method endpoint {:keys [stream?] :as opts}]
     (if stream?
-      (throw (UnsupportedOperationException. "Streaming not supported with http-kit"))
+      (stream this method endpoint opts)
       (request this method endpoint opts))))
-
-(comment
-  ;; What do you think about instatiating base client for the user?
-  (def base-client (->Client "http://localhost:11434"))
-  )
-
-(defn chat
-  ([client model messages]
-   (chat client model messages {}))
-  ([client model messages opts]
-   (request-stream client :post "/api/chat" (assoc opts
-                                                   :model model
-                                                   :messages messages))))
 
 (defn generate
   ([client model prompt]
    (generate client model prompt {:stream? false
-                                  ;; raw is not supported
-                                  #_#_:raw? false}))
+                                  :format ""
+                                  :context []}))
   ([client model prompt opts]
    (request-stream client :post "/api/generate" (assoc opts
                                                        :model model
                                                        :prompt prompt))))
 
+(defn chat
+  ([client model messages]
+   (chat client model messages {:stream? false
+                                :format ""
+                                :options {}}))
+  ([client model messages opts]
+   #_(m/validate schema/Messages messages)
+   ;; TODO: if there are images within the messages, encode them
+   (request-stream client :post "/api/chat" (assoc opts
+                                                   :model model
+                                                   :messages messages))))
+
 (defn embeddings
   ([client model prompt]
-   (embeddings client model prompt {}))
+   (embeddings client model prompt {:options {}}))
   ([client model prompt opts]
-   (request client :post "/api/embeddings" (assoc opts :model model :prompt prompt))))
+   (request client :post "/api/embeddings" (assoc opts
+                                                  :model model
+                                                  :prompt prompt))))
 
 (defn pull
   ([client model]
-   (pull client model {:insecure? false :stream? false}))
+   (pull client model {:insecure? false
+                       :stream? false}))
   ([client model opts]
    (request-stream client :post "/api/pull" (assoc opts :model model))))
 
 (defn push
   ([client model]
-   (push client model {:insecure? false :stream? false}))
+   (push client model {:insecure? false
+                       :stream? false}))
   ([client model opts]
    (request-stream client :post "/api/push" (assoc opts :model model))))
+
+(defn- cwd []
+  (System/getProperty "user.dir"))
+
+(defn- parse-modelfile
+  ([modelfile] (parse-modelfile modelfile nil))
+  ([modelfile base]
+   (let [base (or base (cwd))])))
 
 (defn create
   ([client model]
    (create client model {:stream? false
                          :path nil
                          :modelfile nil}))
-  ([client model opts]
-   (request-stream client :post "/api/create" (assoc opts :model model))))
+  ([client model {:keys [path modelfile] :as opts}]
+   (let [file (io/file path)
+         parsed  (cond
+                   (and (.exists file) (.isFile file))
+                   (parse-modelfile modelfile (.getParent file))
 
-(defn- parse-modelfile
-  ([modelfile] (parse-modelfile modelfile nil))
-  ([modelfile base]
-   (throw (Exception. "Not implemented"))))
+                   (and (string? modelfile)
+                        (not (str/blank? modelfile)))
+                   (parse-modelfile modelfile)
+
+                   :else
+                   (throw (Exception. "Invalid path or modelfile")))]
+     (request-stream client :post "/api/create" (assoc opts
+                                                       :name model
+                                                       :modelfile parsed)))))
+
+
+
+(comment
+  (import [java.security MessageDigest])
+  (defn sha256 [string]
+    (let [digest (.digest (MessageDigest/getInstance "SHA-256") (.getBytes string "UTF-8"))]
+      (apply str (map (partial format "%02x") digest))))
+  )
 
 (defn- create-blob [path]
+  ;; TODO
+  (println "Creating blob from" path)
   (throw (Exception. "Not implemented")))
 
-(defn delete [client]
-  (let [response (request client :delete "/api/delete" {})]
+(defn delete [client model]
+  (let [response (request client :delete "/api/delete" {:name model})]
     (if (= 200 (:status response))
-      {:status "success"}
-      {:status "failure"})))
+      {:status :success}
+      {:status :failure})))
 
 (defn list-tags [client]
   (request client :get "/api/tags" {}))
 
-(defn copy
-  [client source destination]
-  (let [{:keys [status] :as _response} (request client :post "/api/copy" {:source source
-                                                                          :destination destination})]
-    (if (= 200 status)
+(defn copy [client source destination]
+  (let [response (request client :post "/api/copy" {:source source
+                                           :destination destination})]
+    (if (= 200 (:status response))
       {:status "success"}
       {:status "failure"})))
 
-(defn show
-  [client model]
+(defn show [client model]
   (request client :post "/api/show" {:name model}))

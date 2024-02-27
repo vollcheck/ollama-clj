@@ -2,9 +2,9 @@
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
 
         ;; HTTP communication
-        ;; manifold/manifold {:mvn/version "0.4.2"}
-        ;; aleph/aleph {:mvn/version "0.7.1"}
-        http-kit/http-kit {:mvn/version "2.8.0-SNAPSHOT"}
+        manifold/manifold {:mvn/version "0.4.2"}
+        aleph/aleph {:mvn/version "0.7.1"}
+        org.clj-commons/byte-streams {:mvn/version "0.3.4"}
 
         ;; JSON
         metosin/jsonista {:mvn/version "0.3.8"}
