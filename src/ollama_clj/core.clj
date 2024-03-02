@@ -22,26 +22,15 @@
           method (resolve-method method)
           body   (json/write-value-as-string opts)
           opts   (assoc opts :body body)]
-      (d/chain (method url opts)
-               :body
-               bs/to-string)))
+      (method url opts)))
 
   (stream [_this method endpoint {:keys [] :as opts}]
     (let [url    (str base-url endpoint)
           method (resolve-method method)
           body   (json/write-value-as-string opts)
           cp     (http/connection-pool {:connection-options {:raw-stream? true}})
-          om     (json/keyword-keys-object-mapper)
           opts   (assoc opts :body body :pool cp)]
-      (-> (method url opts)
-          (d/chain (fn [{:keys [body] :as _resp}]
-                     (s/consume
-                      (fn [chunk]
-                        (print "_" (-> chunk
-                                       bs/to-string
-                                       (json/read-value om)
-                                       :response)))
-                      body))))))
+      (method url opts)))
 
   (request-stream [this method endpoint {:keys [stream?] :as opts}]
     (if stream?
@@ -50,9 +39,7 @@
 
 (defn generate
   ([client model prompt]
-   (generate client model prompt {:stream? false
-                                  :format ""
-                                  :context []}))
+   (generate client model prompt {}))
   ([client model prompt opts]
    (request-stream client :post "/api/generate" (assoc opts
                                                        :model model
@@ -60,9 +47,7 @@
 
 (defn chat
   ([client model messages]
-   (chat client model messages {:stream? false
-                                :format ""
-                                :options {}}))
+   (chat client model messages {}))
   ([client model messages opts]
    (request-stream client :post "/api/chat" (assoc opts
                                                    :model model
@@ -78,8 +63,7 @@
 
 (defn pull
   ([client model]
-   (pull client model {:insecure? false
-                       :stream? false}))
+   (pull client model {}))
   ([client model opts]
    (request-stream client :post "/api/pull" (assoc opts :model model))))
 

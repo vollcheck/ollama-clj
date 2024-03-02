@@ -4,7 +4,8 @@
    [jsonista.core :as json]
    [ollama-clj.core :as o]
    [manifold.deferred :as d]
-   [clj-commons.byte-streams :as bs]))
+   [clj-commons.byte-streams :as bs]
+   [manifold.stream :as s]))
 
 (def kkom json/keyword-keys-object-mapper)
 
@@ -13,50 +14,35 @@
 
   (def messages
     [{:role "user"
-      :content "Why is the sky blue?"}])
+      :content "Why is the sky blue? Please keep the answer short."}])
 
-  ;; (def response
-  ;;   (o/chat client "stablelm-zephyr" messages {:stream? false}))
+  ;; sync
+  (->> (d/chain (o/chat client #_"stablelm-zephyr" "mistral" messages)
+                :body
+                bs/to-line-seq
+                #(s/map (fn [x] (-> x
+                                    bs/to-string
+                                    (json/read-value kkom)
+                                    #_(get-in [:message :content])))
+                        %)
+                #(s/reduce conj [] %))
+       deref
+       (map #(get-in % [:message :content]))
+       (reduce str ""))
 
-  ;; simple chain
-  (d/chain (o/chat client "stablelm-zephyr" messages {:stream? false})
-           :body
-           bs/to-string
-           type)
-
-  ;; simple chain with println at the end
-  (d/chain (o/chat client "stablelm-zephyr" messages {:stream? false})
-           :body
-           bs/to-string
-           println)
-
-  ;; simple "sync" print
-  (->> @(o/chat client "stablelm-zephyr" messages {:stream? false})
-       :body
-       bs/to-string
-       (spit "chat-response.json")
-       ;; (json/read-value kkom)
-       ;; println
-       )
-
-  ;; using the `chat` function with a single message + save to a file
-  (->> @(o/chat client "stablelm-zephyr" "why is the sky blue?" {:stream? false})
-       :body
-       bs/to-string
-       ;; (spit "chat-response.json")
-       ;; (json/read-value kkom)
-       ;; println
-       )
-
-  (->> @(o/generate client "stablelm-zephyr" "why is the sky blue?" {:stream? false})
-       :body
-       ;;bs/to-string
-       ;; (spit "chat-response.json")
-       ;; (json/read-value kkom)
-       ;; println
-       )
-
-  )
+  ;; streaming, async
+  (->> (d/chain (o/chat client "stablelm-zephyr" messages {:stream? true})
+                :body
+                #(s/map (fn [x] (-> x
+                                    bs/to-string
+                                    (json/read-value kkom)
+                                    #_(get-in [:message :content])))
+                        %)
+                #(s/reduce (fn [acc x]
+                             (conj acc x))
+                           [] %)
+                )
+       deref)
 
 
 (comment
