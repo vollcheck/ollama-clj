@@ -1,26 +1,11 @@
 (ns ollama-clj.core
-  ;; (:exclude [list]) ;; for list
-  (:require [aleph.http :as http]
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
+            [aleph.http :as http]
             [clj-commons.byte-streams :as bs]
             [manifold.stream :as s]
             [manifold.deferred :as d]
             [jsonista.core :as json]))
-
-(def ollama-clj-version "0.1.0")
-
-(def user-agent-string
-  (format "ollama-clj/%s; system: %s with Java %s and Clojure %s"
-          ollama-clj-version
-          (System/getProperty "os.name")
-          (System/getProperty "java.version")
-          (clojure-version)))
-
-(def base-config
-  {:follow-redirects? true
-   :timeout nil
-   :headers {"Content-Type" "application/json"
-             "Accept"       "application/json"
-             "User-Agent"   user-agent-string}})
 
 (defprotocol BaseClient
   (request        [this method endpoint opts])
@@ -52,13 +37,16 @@
           (d/chain (fn [{:keys [body] :as _resp}]
                      (s/consume
                       (fn [chunk]
-                        (print "_" (-> chunk bs/to-string (json/read-value om) :response)))
+                        (print "_" (-> chunk
+                                       bs/to-string
+                                       (json/read-value om)
+                                       :response)))
                       body))))))
 
   (request-stream [this method endpoint {:keys [stream?] :as opts}]
     (if stream?
-      (stream this method endpoint opts)
-      (request this method endpoint opts))))
+        (stream this method endpoint opts)
+        (request this method endpoint opts))))
 
 (defn generate
   ([client model prompt]
@@ -76,8 +64,6 @@
                                 :format ""
                                 :options {}}))
   ([client model messages opts]
-   #_(m/validate schema/Messages messages)
-   ;; TODO: if there are images within the messages, encode them
    (request-stream client :post "/api/chat" (assoc opts
                                                    :model model
                                                    :messages messages))))
