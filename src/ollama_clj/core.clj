@@ -139,5 +139,13 @@
       {:status "success"}
       {:status "failure"})))
 
-(defn show [client model]
-  (request client :post "/api/show" {:name model}))
+(defn show
+  ([client]
+   (show client {}))
+  ([^Client client {:keys [model raw?]}]
+   ;; TODO: handle case when the model is not found - 404 error message
+   (if-let [actual-model (or model (.model client))]
+     (cond-> (request client :post "/api/show" {:name actual-model})
+       (not (true? raw?))
+       (u/read-body))
+     (throw (Exception. "Provide a model name either by passing it to the function or by setting it in the client.")))))
