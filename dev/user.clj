@@ -30,22 +30,6 @@
     (println part))
 
 
-  ;;;;;; SHOW TESTS
-  ;; NOTE: this should raise an error says the model is not found
-  (o/show (o/make-client "http://localhost:11434" nil))
-
-  ;; NOTE: good, uses model defined in client
-  (o/show (o/make-client "http://localhost:11434" "stablelm-zephyr"))
-
-  ;; NOTE: good, but raw output (manifold deferred)
-  (o/show (o/make-client "http://localhost:11434" "stablelm-zephyr")
-          {:raw? true})
-
-  ;; NOTE: good, same as above but with raw output
-  (o/show client {:raw? true})
-
-  ;; TODO: it raises 404 error
-  (o/show client {:model "mistral"})
 
 
   ;; sync
@@ -86,4 +70,29 @@
       (json/read-value kkom) ;; TODO test further JSON parsing
       type
       )
+  )
+
+
+(comment
+  "`SHOW` TESTS"
+  ;; TODO: turn this into actual tests
+
+
+  ;; NOTE: this should raise an error says the model is not found
+  (o/show (o/make-client "http://localhost:11434" nil))
+
+  (let [client (o/make-client "http://localhost:11434" "stablelm-zephyr")]
+
+    ;; NOTE: good, uses model defined in client
+    (o/show client)
+
+    ;; NOTE: good, but raw output
+    (o/show client {:raw? false})
+
+    ;; NOTE: good, same as above but with raw output (manifold deferred)
+    (o/show client {:raw? true})
+
+    ;; TODO: it raises 404 error
+    (o/show client {:model "mistral"})
+    )
   )
