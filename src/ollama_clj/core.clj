@@ -5,7 +5,9 @@
             [clj-commons.byte-streams :as bs]
             [manifold.stream :as s]
             [manifold.deferred :as d]
-            [jsonista.core :as json]))
+            [jsonista.core :as json]
+
+            [ollama-clj.util :as u]))
 
 (defprotocol BaseClient
   (request        [this method endpoint opts])
@@ -15,21 +17,24 @@
 (defn- resolve-method [method]
   (ns-resolve 'aleph.http (symbol (name method))))
 
-(defrecord Client [^String base-url]
+(defrecord Client [^String base-url ^String model]
   BaseClient
   (request [_this method endpoint opts]
     (let [url    (str base-url endpoint)
           method (resolve-method method)
-          body   (json/write-value-as-string opts)
-          opts   (assoc opts :body body)]
-      (method url opts)))
+          opts   (cond-> opts
+                   (contains? opts :model) (assoc :model model))
+          body   {:body (json/write-value-as-string opts)}]
+      (method url body)))
 
-  (stream [_this method endpoint {:keys [] :as opts}]
+  (stream [_this method endpoint opts]
     (let [url    (str base-url endpoint)
           method (resolve-method method)
-          body   (json/write-value-as-string opts)
-          cp     (http/connection-pool {:connection-options {:raw-stream? true}})
-          opts   (assoc opts :body body :pool cp)]
+          opts   (cond-> opts
+                   (nil? (:model opts)) (assoc :model model))
+          opts   {:body (json/write-value-as-string opts)
+                  :pool (http/connection-pool {:connection-options
+                                               {:raw-stream? true}})}]
       (method url opts)))
 
   (request-stream [this method endpoint {:keys [stream?] :as opts}]
@@ -38,41 +43,36 @@
         (request this method endpoint opts))))
 
 (defn generate
-  ([client model prompt]
-   (generate client model prompt {}))
-  ([client model prompt opts]
-   (request-stream client :post "/api/generate" (assoc opts
-                                                       :model model
-                                                       :prompt prompt))))
+  "
+  Expects opts to contain :model, :messages, and :stream? keys.
+  "
+  [client opts]
+  (request-stream client :post "/api/generate" opts))
 
 (defn chat
-  ([client model messages]
-   (chat client model messages {}))
-  ([client model messages opts]
-   (request-stream client :post "/api/chat" (assoc opts
-                                                   :model model
-                                                   :messages messages))))
+  "
+  Expects opts to contain :model, :messages, and :stream? keys.
+  "
+  [client opts]
+  (request-stream client :post "/api/chat" opts))
 
 (defn embeddings
-  ([client model prompt]
-   (embeddings client model prompt {:options {}}))
-  ([client model prompt opts]
-   (request client :post "/api/embeddings" (assoc opts
-                                                  :model model
-                                                  :prompt prompt))))
+  "
+  Expects opts to have :model, :prompt, and :stream? keys.
+  "
+  [client opts]
+  (request client :post "/api/embeddings" opts))
 
 (defn pull
-  ([client model]
-   (pull client model {}))
-  ([client model opts]
-   (request-stream client :post "/api/pull" (assoc opts :model model))))
+  ""
+  [client opts]
+  (request-stream client :post "/api/pull" opts))
 
 (defn push
-  ([client model]
-   (push client model {:insecure? false
-                       :stream? false}))
-  ([client model opts]
-   (request-stream client :post "/api/push" (assoc opts :model model))))
+  [client opts]
+  (request-stream client :post "/api/push" (merge {:insecure? false
+                                                   :stream? false}
+                                                  opts)))
 
 (defn- cwd []
   (System/getProperty "user.dir"))
