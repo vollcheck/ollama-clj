@@ -42,6 +42,12 @@
         (stream this method endpoint opts)
         (request this method endpoint opts))))
 
+(defn make-client
+  ([base-url]
+   (make-client base-url nil))
+  ([base-url model]
+   (->Client base-url model)))
+
 (defn generate
   "
   Expects opts to contain :model, :messages, and :stream? keys.
