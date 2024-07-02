@@ -23,7 +23,7 @@
     (let [url    (str base-url endpoint)
           method (resolve-method method)
           opts   (cond-> opts
-                   (contains? opts :model) (assoc :model model))
+                   (not (:model opts)) (assoc :model model))
           body   {:body (json/write-value-as-string opts)
                   :throw-exceptions false}]
       (method url body)))
@@ -66,15 +66,19 @@
 
 (defn embeddings
   "
-  Expects opts to have :model, :prompt, and :stream? keys.
+  https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
   "
-  [client opts]
-  (request client :post "/api/embeddings" opts))
+  ([client prompt]
+   (embeddings client nil prompt))
+  ([client model prompt]
+  (u/read-body (request client :post "/api/embeddings" {:model model
+                                                        :prompt prompt}))))
 
 (defn pull
-  ""
-  [client opts]
-  (request-stream client :post "/api/pull" opts))
+  ;; TODO: not finished!
+  [client {:keys [name insecure stream] :as opts}]
+  (throw (Exception. "Not implemented yet"))
+  #_(u/process (request-stream client :post "/api/pull" opts)))
 
 (defn push
   [client opts]

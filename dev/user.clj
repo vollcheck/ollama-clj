@@ -62,6 +62,37 @@
 
   )
 
+(comment
+  "`EMBEDDINGS` TESTS"
+  (let [client (o/make-client "http://localhost:11434" "stablelm-zephyr")]
+
+    ;; good
+    (o/embeddings client "stablelm-zephyr" "here is something about llms")
+
+    ;; good
+    (o/embeddings client "here is something about llms")
+
+    ;; {:error "model 'mistral' not found, try pulling it first"}
+    (o/embeddings client "mistral" "here is something about llms"))
+  )
+
+(comment
+  "`PULL` TESTS"
+  ;; TODO: turn this into actual tests
+  (let [client (o/make-client "http://localhost:11434")]
+    (def r (o/pull client {:name "stablelm-zephyr"
+                           :stream? true})))
+
+  (type r)
+  (-> r deref)
+  )
+
+(comment
+  "`LIST-TAGS` TESTS"
+  ;; TODO: turn this into actual tests
+  (let [client (o/make-client "http://localhost:11434")]
+    (o/list-tags client))
+  )
 
 (comment
   "`LIST-TAGS` TESTS"
