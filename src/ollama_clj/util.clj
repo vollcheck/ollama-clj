@@ -1,9 +1,7 @@
 (ns ollama-clj.util
   (:require [jsonista.core :as json]
-            [ollama-clj.core :as o]
             [manifold.deferred :as d]
-            [clj-commons.byte-streams :as bs]
-            [manifold.stream :as s]))
+            [clj-commons.byte-streams :as bs]))
 
 (def kkom json/keyword-keys-object-mapper)
 
@@ -19,9 +17,10 @@
             bs/to-line-seq
             #(map process-part-fn %))))
 
-(defn read-body [response]
+(defn read-body
+  "Simply reads the body of a response."
+  [response]
   (-> response
       deref
       :body
-      bs/to-string
       (json/read-value kkom)))

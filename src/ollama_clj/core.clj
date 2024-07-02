@@ -24,7 +24,8 @@
           method (resolve-method method)
           opts   (cond-> opts
                    (contains? opts :model) (assoc :model model))
-          body   {:body (json/write-value-as-string opts)}]
+          body   {:body (json/write-value-as-string opts)
+                  :throw-exceptions false}]
       (method url body)))
 
   (stream [_this method endpoint opts]
@@ -32,7 +33,8 @@
           method (resolve-method method)
           opts   (cond-> opts
                    (nil? (:model opts)) (assoc :model model))
-          opts   {:body (json/write-value-as-string opts)
+          opts   {:throw-exceptions false
+                  :body (json/write-value-as-string opts)
                   :pool (http/connection-pool {:connection-options
                                                {:raw-stream? true}})}]
       (method url opts)))
@@ -123,29 +125,24 @@
   (println "Creating blob from" path)
   (throw (Exception. "Not implemented")))
 
-(defn delete [client model]
-  (let [response (request client :delete "/api/delete" {:name model})]
-    (if (= 200 (:status response))
-      {:status :success}
-      {:status :failure})))
-
 (defn list-tags [client]
-  (request client :get "/api/tags" {}))
+  (u/read-body (request client :get "/api/tags" {})))
+
+(defn delete [client model]
+  (-> (request client :delete "/api/delete" {:name model})
+      deref
+      :status))
 
 (defn copy [client source destination]
-  (let [response (request client :post "/api/copy" {:source source
-                                           :destination destination})]
-    (if (= 200 (:status response))
-      {:status "success"}
-      {:status "failure"})))
+  (-> (request client :post "/api/copy" {:source source
+                                         :destination destination})
+      deref
+      :status))
 
 (defn show
   ([client]
    (show client {}))
-  ([^Client client {:keys [model raw?]}]
-   ;; TODO: handle case when the model is not found - 404 error message
+  ([^Client client model]
    (if-let [actual-model (or model (.model client))]
-     (cond-> (request client :post "/api/show" {:name actual-model})
-       (not (true? raw?))
-       (u/read-body))
+     (u/read-body (request client :post "/api/show" {:name actual-model}))
      (throw (Exception. "Provide a model name either by passing it to the function or by setting it in the client.")))))
