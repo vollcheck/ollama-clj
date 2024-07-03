@@ -64,28 +64,6 @@
   [client opts]
   (request-stream client :post "/api/chat" opts))
 
-(defn embeddings
-  "
-  https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
-  "
-  ([client prompt]
-   (embeddings client nil prompt))
-  ([client model prompt]
-  (u/read-body (request client :post "/api/embeddings" {:model model
-                                                        :prompt prompt}))))
-
-(defn pull
-  ;; TODO: not finished!
-  [client {:keys [name insecure stream] :as opts}]
-  (throw (Exception. "Not implemented yet"))
-  #_(u/process (request-stream client :post "/api/pull" opts)))
-
-(defn push
-  [client opts]
-  (request-stream client :post "/api/push" (merge {:insecure? false
-                                                   :stream? false}
-                                                  opts)))
-
 (defn- cwd []
   (System/getProperty "user.dir"))
 
@@ -93,6 +71,18 @@
   ([modelfile] (parse-modelfile modelfile nil))
   ([modelfile base]
    (let [base (or base (cwd))])))
+
+(comment
+  (import [java.security MessageDigest])
+  (defn sha256 [string]
+    (let [digest (.digest (MessageDigest/getInstance "SHA-256") (.getBytes string "UTF-8"))]
+      (apply str (map (partial format "%02x") digest))))
+  )
+
+(defn- create-blob [path]
+  ;; TODO
+  (println "Creating blob from" path)
+  (throw (Exception. "Not implemented")))
 
 (defn create
   ([client model]
@@ -115,38 +105,46 @@
                                                        :name model
                                                        :modelfile parsed)))))
 
-
-
-(comment
-  (import [java.security MessageDigest])
-  (defn sha256 [string]
-    (let [digest (.digest (MessageDigest/getInstance "SHA-256") (.getBytes string "UTF-8"))]
-      (apply str (map (partial format "%02x") digest))))
-  )
-
-(defn- create-blob [path]
-  ;; TODO
-  (println "Creating blob from" path)
-  (throw (Exception. "Not implemented")))
-
 (defn list-tags [client]
   (u/read-body (request client :get "/api/tags" {})))
-
-(defn delete [client model]
-  (-> (request client :delete "/api/delete" {:name model})
-      deref
-      :status))
-
-(defn copy [client source destination]
-  (-> (request client :post "/api/copy" {:source source
-                                         :destination destination})
-      deref
-      :status))
 
 (defn show
   ([client]
    (show client {}))
-  ([^Client client model]
+  ([client model]
    (if-let [actual-model (or model (.model client))]
      (u/read-body (request client :post "/api/show" {:name actual-model}))
      (throw (Exception. "Provide a model name either by passing it to the function or by setting it in the client.")))))
+
+(defn copy [client src dest]
+  (u/read-status (request client :post "/api/copy" {:source src
+                                                    :destination dest})))
+
+(defn delete [client model]
+  (u/read-status (request client :delete "/api/delete" {:name model})))
+
+(defn pull
+  ;; TODO: not finished!
+  [client {:keys [name insecure stream] :as opts}]
+  (throw (Exception. "Not implemented yet"))
+  #_(u/process (request-stream client :post "/api/pull" opts)))
+
+(defn push
+  [client opts]
+  (request-stream client :post "/api/push" (merge {:insecure? false
+                                                   :stream? false}
+                                                  opts)))
+
+(defn embeddings
+  "
+  https://github.com/ollama/ollama/blob/main/docs/api.md#generate-embeddings
+  "
+  ([client prompt]
+   (embeddings client nil prompt))
+  ([client model prompt]
+  (u/read-body (request client :post "/api/embeddings" {:model model
+                                                        :prompt prompt}))))
+
+(defn list-running
+  [client]
+  (u/read-body (request-stream client :get "/api/ps" {})))

@@ -24,3 +24,10 @@
       deref
       :body
       (json/read-value kkom)))
+
+(defn read-status
+  "Simply reads the status of a response."
+  [response]
+  (-> response
+      deref
+      :status))

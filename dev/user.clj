@@ -62,6 +62,29 @@
 
   )
 
+
+(comment
+  "`LIST-RUNNING` TESTS"
+  (let [client (o/make-client "http://localhost:11434" "stablelm-zephyr-backup")]
+    ;; good
+    (o/list-running client))
+   ;; => {:models
+  ;;     [{:expires_at "2024-07-03T14:31:47.658838661+02:00",
+  ;;       :size_vram 0,
+  ;;       :name "stablelm-zephyr:latest",
+  ;;       :digest
+  ;;       "0a108dbd846e2b0ee264a71a28e50ac18e7f1601eeb2d677217602d32644bf24",
+  ;;       :size 1754761728,
+  ;;       :details
+  ;;       {:format "gguf",
+  ;;        :family "stablelm",
+  ;;        :parent_model "",
+  ;;        :parameter_size "3B",
+  ;;        :quantization_level "Q4_0",
+  ;;        :families ["stablelm"]},
+  ;;       :model "stablelm-zephyr:latest"}]}
+  )
+
 (comment
   "`EMBEDDINGS` TESTS"
   (let [client (o/make-client "http://localhost:11434" "stablelm-zephyr")]
