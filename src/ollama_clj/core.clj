@@ -106,22 +106,26 @@
                                                        :modelfile parsed)))))
 
 (defn list-tags [client]
-  (u/read-body (request client :get "/api/tags" {})))
+  (u/read-body
+   (request client :get "/api/tags" {})))
+
 
 (defn show
   ([client]
-   (show client {}))
+   (show client nil))
   ([client model]
    (if-let [actual-model (or model (.model client))]
      (u/read-body (request client :post "/api/show" {:name actual-model}))
      (throw (Exception. "Provide a model name either by passing it to the function or by setting it in the client.")))))
 
 (defn copy [client src dest]
-  (u/read-status (request client :post "/api/copy" {:source src
-                                                    :destination dest})))
+  (u/read-status
+   (request client :post "/api/copy" {:source src
+                                      :destination dest})))
 
 (defn delete [client model]
-  (u/read-status (request client :delete "/api/delete" {:name model})))
+  (u/read-status
+   (request client :delete "/api/delete" {:name model})))
 
 (defn pull
   ;; TODO: not finished!
@@ -131,6 +135,7 @@
 
 (defn push
   [client opts]
+  ;; TODO: not finished!
   (request-stream client :post "/api/push" (merge {:insecure? false
                                                    :stream? false}
                                                   opts)))
